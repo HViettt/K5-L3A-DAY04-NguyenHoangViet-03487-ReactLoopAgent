@@ -18,8 +18,21 @@ def post_json(url, headers, payload):
         with urllib.request.urlopen(req, timeout=60) as response:
             return json.load(response)
     except urllib.error.HTTPError as exc:
-        # Do not print response bodies: they may contain account or request data.
-        raise RuntimeError(f'Provider trả HTTP {exc.code}; kiểm tra model, key và quota.') from exc
+        # Provider error payloads can identify quota, rate limits, or model issues.
+        # Include only its short error code/message, never headers or request data.
+        detail = ''
+        try:
+            body = json.loads(exc.read().decode('utf-8', errors='replace'))
+            error = body.get('error', {}) if isinstance(body, dict) else {}
+            if isinstance(error, dict):
+                code = error.get('status') or error.get('code')
+                message = error.get('message')
+                parts = [str(value) for value in (code, message) if value]
+                if parts:
+                    detail = ': ' + ' — '.join(parts)
+        except (ValueError, OSError):
+            pass
+        raise RuntimeError(f'Provider trả HTTP {exc.code}{detail}.') from exc
     except urllib.error.URLError as exc:
         raise RuntimeError(f'Không kết nối được provider: {exc.reason}') from exc
 
@@ -75,7 +88,7 @@ class Provider:
             else:
                 native.append({'role': 'user', 'content': m['content']})
         tools = [{'name': x['function']['name'], 'description': x['function']['description'], 'input_schema': x['function']['parameters']} for x in schemas]
-        payload = {'model': self.model, 'max_tokens': 1024, 'system': system, 'messages': native}
+        payload = {'model': self.model, 'max_tokens': 4096, 'system': system, 'messages': native}
         if tools:
             payload['tools'] = tools
         data = post_json(self.url, {'x-api-key': self.key, 'anthropic-version': '2023-06-01'}, payload)
