@@ -40,6 +40,21 @@ class EvidenceGateTests(unittest.TestCase):
     def test_failed_tool_does_not_require_source(self):
         fake = FakeProvider([tool_call('1', 'get_incident_details', '{"provider":"github","incident_id":"missing"}'), final('Không tìm được incident')])
         self.assertEqual(run_agent('x', fake, StatusTools())['status'], 'completed')
+    def test_timeout_gets_one_disclosure_review(self):
+        fake = FakeProvider([tool_call('1', 'get_status', '{"provider":"cloudflare"}'),
+                             final('Cloudflare operational.'),
+                             final('Cloudflare bị timeout, chưa xác minh được.')])
+        result = run_agent('x', fake, ScenarioTools('cloudflare_timeout'), max_steps=5)
+        self.assertEqual(result['status'], 'completed')
+        self.assertIn('timeout', result['answer'])
+        self.assertTrue(any(x['event'] == 'validation_tool_error' for x in result['trace']))
+
+    def test_timeout_at_budget_limit_is_not_completed(self):
+        fake = FakeProvider([tool_call('1', 'get_status', '{"provider":"cloudflare"}'),
+                             final('Cloudflare operational.')])
+        result = run_agent('x', fake, ScenarioTools('cloudflare_timeout'), max_steps=2)
+        self.assertEqual(result['status'], 'max_steps')
+        self.assertTrue(any(x['event'] == 'validation_tool_error' for x in result['trace']))
 
 if __name__ == '__main__':
     unittest.main()
