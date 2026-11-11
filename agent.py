@@ -1,4 +1,4 @@
-"""Bài tập chính: hiện chưa có lời giải. Xem GUIDE.md."""
+"""Bài tập chính: ReAct agent loop điều tra trạng thái GitHub/Cloudflare. Xem GUIDE.md."""
 
 SYSTEM_PROMPT = '''Bạn là trợ lý điều tra trạng thái GitHub và Cloudflare.
 Dùng tools trước khi khẳng định về trạng thái. Phân biệt incident hiện tại và lịch sử,

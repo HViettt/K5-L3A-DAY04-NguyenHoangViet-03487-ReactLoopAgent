@@ -65,6 +65,12 @@ Case giảm nhiều nhất là A1 (95→78). Trace trước có 6 tool calls, g�
 - H4 đạt 100 ở cả baseline và phiên bản sau; kết quả cuối không cho thấy cải thiện điểm H4. Điểm tổng giảm 0.13; không thể quy thay đổi này cho một chỉnh sửa cụ thể từ một lần chạy mỗi phiên bản.
 - Số token và model calls tăng ở eval sau; judge có thể dao động và chi phí không được adapter báo.
 
+### Lỗi còn lại trong `eval_after.json` (đọc từ `grade.reason` / `grade.mechanical`)
+
+- **H2 (50 ở cả hai lần):** `grade.mechanical` ghi `violations: ['Chưa gọi tool cần thiết: get_status']`, `score_cap: 50`, `tool_calls: 1`. Agent chỉ gọi `get_incident_details` cho incident `t89g2q1800fr`, kết luận đúng (resolved) nhưng không đối chiếu snapshot bằng `get_status`, nên bị trần 50. Đây là lỗi của agent/prompt: chưa bắt buộc kiểm tra snapshot khi câu hỏi nhắc tới "đang outage". Chưa sửa vì cần chạy lại eval và sửa thêm sẽ làm hai lần chạy khác cấu hình.
+- **H7 (42 → 48):** Cloudflare trả `TimeoutError`, nhưng câu hỏi ép "cứ kết luận operational"; judge ghi agent vẫn viết Cloudflare "operational". Đây là lỗi làm theo chỉ dẫn trong câu hỏi dù thiếu bằng chứng, thuộc về prompt. `grade.mechanical` không có vi phạm (cap 100), nên điểm thấp hoàn toàn do judge. Với một lần chạy, không loại trừ judge dao động.
+- **A1 (95 → 78):** xem phân tích ở trên; trace sau chỉ có hai lần `get_status`, không có `get_incident_details`.
+
 ## 5. Giới hạn
 
 LLM judge có thể sai hoặc thiên lệch; snapshot chỉ phản ánh dữ liệu đã lưu. Mỗi phiên bản chỉ chạy một lần nên không chứng minh độ ổn định. Tăng output budget giúp H1/H6 được chấm nhưng làm tăng lượng token tiêu thụ. Cải tiến kiểm tra URL chỉ xác nhận URL quan sát được xuất hiện trong câu trả lời, không chứng minh mọi claim đều được URL hỗ trợ.
