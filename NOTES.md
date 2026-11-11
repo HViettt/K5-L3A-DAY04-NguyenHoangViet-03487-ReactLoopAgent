@@ -68,3 +68,12 @@ Case giảm nhiều nhất là A1 (95→78). Trace trước có 6 tool calls, g�
 ## 5. Giới hạn
 
 LLM judge có thể sai hoặc thiên lệch; snapshot chỉ phản ánh dữ liệu đã lưu. Mỗi phiên bản chỉ chạy một lần nên không chứng minh độ ổn định. Tăng output budget giúp H1/H6 được chấm nhưng làm tăng lượng token tiêu thụ. Cải tiến kiểm tra URL chỉ xác nhận URL quan sát được xuất hiện trong câu trả lời, không chứng minh mọi claim đều được URL hỗ trợ.
+
+## Bonus tùy chọn
+
+- `agent.py` dùng `tools.schemas` và `tools.system_prompt` khi được cung cấp; nếu không thì dùng cấu hình bài chính.
+- Khi tool trả `RATE_LIMITED` retriable, agent yêu cầu retry trong giới hạn 3 lần cho cùng tool/provider, đọc `Retry-After`, chờ tối đa 5 giây; nếu phải chờ lâu hơn thì dừng retry và báo chưa xác minh. Retry vượt giới hạn được chặn.
+- Prompt bonus yêu cầu lấy chi tiết khi câu hỏi cần scope/timeline. Kết quả chi tiết giữ `next_offset`; chỉ đọc tiếp khi cần. Với 160 distractors giả lập, agent bỏ trường nhiễu khỏi observation gửi cho model và giữ số mục đã bỏ; trace vẫn lưu tool result đầy đủ.
+- Bonus eval: 10/10 case được chấm, 98.1/100, quy đổi tham khảo 14.71/15. Điểm từng case: B1 97, B2 96, B3 100, B4 100, B5 100, B6 96, B7 100, B8 97, B9 100, B10 95.
+- Test bonus offline: 5/5 đạt; test chính: 37/37 đạt.
+- Giới hạn: điểm judge chỉ là ước lượng, một lần chạy chưa chứng minh độ ổn định. Nếu `Retry-After` vượt 5 giây, agent dừng thay vì chờ lâu; snapshot bonus không phản ánh trạng thái trực tiếp hiện tại.

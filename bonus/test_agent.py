@@ -40,6 +40,24 @@ class BonusAgentTests(unittest.TestCase):
         self.assertEqual(result['status'],'completed')
         self.assertEqual(json.loads(p.histories[1][-1]['content'])['error'],'RATE_LIMITED')
         self.assertEqual(json.loads(p.histories[2][-1]['content'])['provider'],'vercel')
+
+    def test_agent_requests_retry_before_accepting_final_after_429(self):
+        t=BonusTools(scenario='rate_limit_once')
+        p=ScriptedProvider([call('a','get_vercel_status',{}), final('Chưa kiểm tra được.'),
+                            call('b','get_vercel_status',{}), final('Vercel operational.')])
+        result=run_agent('Kiểm tra Vercel',p,t,max_steps=6)
+        self.assertEqual(result['status'],'completed')
+        self.assertTrue(any(x['event']=='retry_required' for x in result['trace']))
+        self.assertEqual(sum(x['event']=='tool' and x['name']=='get_vercel_status' for x in result['trace']),2)
+        self.assertIn('Retry this tool once',p.histories[2][-1]['content'])
+
+    def test_persistent_429_is_capped_at_three_tool_attempts(self):
+        t=BonusTools(scenario='rate_limit_always')
+        p=ScriptedProvider([call(str(i),'get_vercel_status',{}) for i in range(4)]+[final('Vercel status unknown.')])
+        result=run_agent('Kiểm tra Vercel',p,t,max_steps=8)
+        self.assertEqual(result['status'],'completed')
+        self.assertEqual(sum(x['event']=='tool' and x['name']=='get_vercel_status' for x in result['trace']),3)
+        self.assertTrue(any(x['event']=='tool_retry_blocked' for x in result['trace']))
     def test_invalid_arguments_observation_returns_to_model(self):
         t=BonusTools()
         bad={'provider':'npm','incident_id':'cc0t2r4403sy','offset':'zero'}
